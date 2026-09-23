@@ -33,7 +33,44 @@ export const projectApi = createApi({
       query: ({ orgId, projectId }) => ({ url: `/api/orgs/${orgId}/projects/${projectId}`, method: 'GET' }),
       providesTags: ['Projects'],
     }),
+    parseProject: builder.mutation({
+      query: ({ orgId, projectId }) => ({
+        url: `/api/orgs/${orgId}/projects/${projectId}/parse`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Questions'],
+    }),
+    listQuestions: builder.query({
+      query: ({ orgId, projectId }) => ({
+        url: `/api/orgs/${orgId}/projects/${projectId}/questions`,
+        method: 'GET',
+      }),
+      providesTags: ['Questions'],
+    }),
+    updateQuestion: builder.mutation({
+      query: ({ orgId, projectId, questionId, ...body }) => ({
+        url: `/api/orgs/${orgId}/projects/${projectId}/questions/${questionId}`,
+        method: 'PATCH',
+        data: body,
+      }),
+      invalidatesTags: ['Questions'],
+    }),
+    confirmQuestions: builder.mutation({
+      query: ({ orgId, projectId }) => ({
+        url: `/api/orgs/${orgId}/projects/${projectId}/questions/confirm`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Projects', 'Questions'],
+    }),
   }),
 })
 
-export const { useCreateProjectMutation, useListProjectsQuery, useGetProjectQuery } = projectApi
+export const {
+  useCreateProjectMutation,
+  useListProjectsQuery,
+  useGetProjectQuery,
+  useParseProjectMutation,
+  useListQuestionsQuery,
+  useUpdateQuestionMutation,
+  useConfirmQuestionsMutation,
+} = projectApi

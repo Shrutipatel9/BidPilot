@@ -16,6 +16,17 @@ const authSlice = createSlice({
       if (access_token) state.accessToken = access_token
       if (refresh_token) state.refreshToken = refresh_token
       if (user) state.user = user
+      // A user-initiated auth event (login/signup/accept-invitation) is a new session — a
+      // currentOrgId left over from a previous one (e.g. logging in as a different user
+      // without an explicit logout in between) must not carry over. AppShell repopulates it
+      // from that user's real org list once /api/orgs loads. Silent token refresh uses
+      // tokensRefreshed below instead, which deliberately does NOT do this.
+      state.currentOrgId = null
+    },
+    tokensRefreshed(state, action) {
+      const { access_token, refresh_token } = action.payload
+      if (access_token) state.accessToken = access_token
+      if (refresh_token) state.refreshToken = refresh_token
     },
     setUser(state, action) {
       state.user = action.payload
@@ -32,7 +43,7 @@ const authSlice = createSlice({
   },
 })
 
-export const { setCredentials, setUser, setCurrentOrgId, logout } = authSlice.actions
+export const { setCredentials, tokensRefreshed, setUser, setCurrentOrgId, logout } = authSlice.actions
 export default authSlice.reducer
 
 export const selectIsAuthenticated = (state) => Boolean(state.auth.accessToken)

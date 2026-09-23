@@ -1,5 +1,5 @@
 import axiosInstance from './axiosInstance'
-import { logout, setCredentials } from '../features/auth/authSlice'
+import { logout, tokensRefreshed } from '../features/auth/authSlice'
 
 const rawBaseQuery = async ({ url, method = 'GET', data, params }, api) => {
   const token = api.getState().auth.accessToken
@@ -45,7 +45,9 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
       const refreshResult = await refreshPromise
 
       if (refreshResult.data) {
-        api.dispatch(setCredentials(refreshResult.data))
+        // Same session, same user — deliberately not setCredentials, which resets
+        // currentOrgId for a genuine new-login event (see authSlice.js).
+        api.dispatch(tokensRefreshed(refreshResult.data))
         result = await rawBaseQuery(args, api, extraOptions)
       } else {
         api.dispatch(logout())

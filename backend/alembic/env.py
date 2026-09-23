@@ -10,10 +10,13 @@ from alembic import context
 
 from app.db.base import Base
 from app.models import (  # noqa: F401 — register on Base.metadata
+    answer,
+    answer_revision,
     audit_log,
     invitation,
     membership,
     organization,
+    question,
     refresh_token,
     rfp_project,
     user,

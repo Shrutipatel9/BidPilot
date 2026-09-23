@@ -9,9 +9,12 @@ from app.core.rbac import get_membership, require_role
 from app.db.session import get_db
 from app.models.membership import Membership, MembershipRole
 from app.schemas.project import ProjectResponse
-from app.services import project_service
+from app.schemas.question import QuestionResponse, UpdateQuestionRequest
+from app.services import project_service, question_service
 
 router = APIRouter(prefix="/api/orgs/{org_id}/projects", tags=["projects"])
+
+_EDITOR_ROLES = (MembershipRole.owner, MembershipRole.admin, MembershipRole.responder)
 
 
 @router.post("", response_model=ProjectResponse, status_code=201)
@@ -22,7 +25,7 @@ async def create_project(
     buyer: str | None = Form(None),
     due_date: date | None = Form(None),
     tags: str = Form("[]"),
-    membership: Membership = Depends(require_role(MembershipRole.owner, MembershipRole.admin, MembershipRole.responder)),
+    membership: Membership = Depends(require_role(*_EDITOR_ROLES)),
     db: AsyncSession = Depends(get_db),
 ):
     project = await project_service.create_project(
@@ -49,4 +52,56 @@ async def get_project(
     db: AsyncSession = Depends(get_db),
 ):
     project = await project_service.get_project(db, org_id, project_id)
+    return ProjectResponse.model_validate(project)
+
+
+@router.post("/{project_id}/parse", response_model=list[QuestionResponse])
+async def parse_project(
+    org_id: uuid.UUID,
+    project_id: uuid.UUID,
+    membership: Membership = Depends(require_role(*_EDITOR_ROLES)),
+    db: AsyncSession = Depends(get_db),
+):
+    project = await project_service.get_project(db, org_id, project_id)
+    questions = await question_service.parse_and_stage_questions(db, project, membership.user_id)
+    return [QuestionResponse.model_validate(q) for q in questions]
+
+
+@router.get("/{project_id}/questions", response_model=list[QuestionResponse])
+async def list_questions(
+    org_id: uuid.UUID,
+    project_id: uuid.UUID,
+    membership: Membership = Depends(get_membership),
+    db: AsyncSession = Depends(get_db),
+):
+    await project_service.get_project(db, org_id, project_id)  # 404s / tenant-scopes the project_id
+    questions = await question_service.list_questions(db, project_id)
+    return [QuestionResponse.model_validate(q) for q in questions]
+
+
+@router.patch("/{project_id}/questions/{question_id}", response_model=QuestionResponse)
+async def update_question(
+    org_id: uuid.UUID,
+    project_id: uuid.UUID,
+    question_id: uuid.UUID,
+    body: UpdateQuestionRequest,
+    membership: Membership = Depends(require_role(*_EDITOR_ROLES)),
+    db: AsyncSession = Depends(get_db),
+):
+    await project_service.get_project(db, org_id, project_id)
+    question = await question_service.update_question(
+        db, project_id, question_id, body.text, body.section, body.type
+    )
+    return QuestionResponse.model_validate(question)
+
+
+@router.post("/{project_id}/questions/confirm", response_model=ProjectResponse)
+async def confirm_questions(
+    org_id: uuid.UUID,
+    project_id: uuid.UUID,
+    membership: Membership = Depends(require_role(*_EDITOR_ROLES)),
+    db: AsyncSession = Depends(get_db),
+):
+    project = await project_service.get_project(db, org_id, project_id)
+    project = await question_service.confirm_questions(db, project, membership.user_id)
     return ProjectResponse.model_validate(project)

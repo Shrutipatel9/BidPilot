@@ -2,10 +2,27 @@ import { combineReducers, configureStore } from '@reduxjs/toolkit'
 import { FLUSH, PAUSE, PERSIST, PURGE, REGISTER, REHYDRATE, persistReducer, persistStore } from 'redux-persist'
 
 import storage from './localStorageEngine'
-import authReducer from '../features/auth/authSlice'
+import authReducer, { logout } from '../features/auth/authSlice'
 import { authApi } from '../features/auth/authApi'
 import { orgApi } from '../features/org/orgApi'
 import { projectApi } from '../features/project/projectApi'
+
+// Logging out clears the auth slice, but RTK Query's per-endpoint caches (authApi/orgApi/
+// projectApi) live in their own reducers and aren't reset by that alone — without this, a
+// logout followed by logging in as a different user in the same tab (no full page reload)
+// could flash the previous user's cached org/project data before a refetch completes. A
+// middleware reacting to the logout action, rather than each dispatch site importing every
+// api slice and calling resetApiState() itself, avoids a circular import (those slices'
+// baseQuery lives in this same app/ directory) and covers any future logout dispatch site too.
+const resetApiCachesOnLogout = () => (next) => (action) => {
+  const result = next(action)
+  if (action.type === logout.type) {
+    next(authApi.util.resetApiState())
+    next(orgApi.util.resetApiState())
+    next(projectApi.util.resetApiState())
+  }
+  return result
+}
 
 // Only the auth slice persists (localStorage, via redux-persist) — RTK Query's own cache is
 // deliberately not persisted, so server data is always fresh on load.
@@ -32,7 +49,7 @@ export const store = configureStore({
         // specifically rather than disabling serializability checking more broadly.
         ignoredActionPaths: ['meta.arg.originalArgs.file'],
       },
-    }).concat(authApi.middleware, orgApi.middleware, projectApi.middleware),
+    }).concat(authApi.middleware, orgApi.middleware, projectApi.middleware, resetApiCachesOnLogout),
 })
 
 export const persistor = persistStore(store)

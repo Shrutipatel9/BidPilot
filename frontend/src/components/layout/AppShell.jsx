@@ -34,7 +34,12 @@ export default function AppShell() {
   const { data: organizations = [] } = useListMyOrganizationsQuery()
 
   useEffect(() => {
-    if (!currentOrgId && organizations.length > 0) {
+    if (organizations.length === 0) return
+    // Also re-validates currentOrgId against the actual list, not just "is it set" — a
+    // persisted org id that no longer belongs to this user (stale session, removed from the
+    // org, etc.) must not silently keep pointing at an org they can't access.
+    const isCurrentOrgValid = organizations.some((org) => org.id === currentOrgId)
+    if (!isCurrentOrgValid) {
       dispatch(setCurrentOrgId(organizations[0].id))
     }
   }, [currentOrgId, organizations, dispatch])
