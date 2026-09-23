@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     cors_origins: str = "http://localhost:5173"
+    frontend_base_url: str = "http://localhost:5173"
 
     # Phase 0.3 — not required for the app to boot before then.
     jwt_secret_key: str | None = None
