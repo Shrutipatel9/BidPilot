@@ -17,6 +17,9 @@ Start with [`CLAUDE.md`](CLAUDE.md), then [`docs/00-INDEX.md`](docs/00-INDEX.md)
 ## Running locally
 
 ```
+# infra: Postgres (pgvector), Redis, MinIO
+docker compose up -d
+
 # backend
 cd backend
 uv sync
@@ -28,7 +31,7 @@ npm install
 npm run dev                             # http://localhost:5173
 ```
 
-A Docker Compose stack (Postgres, Redis, MinIO, api, web) is planned for Phase 0.1 — see [`docs/phases/phase-0-foundation.md`](docs/phases/phase-0-foundation.md).
+`api` and `web` run natively rather than in Docker Compose, for fast hot-reload — see [`docs/phases/phase-0-foundation.md`](docs/phases/phase-0-foundation.md) for why.
 
 ## Status
 

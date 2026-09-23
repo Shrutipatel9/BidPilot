@@ -11,10 +11,10 @@
 ## Sub-phases
 
 ### 0.1 Docker Compose local stack
-- Services: `api` (FastAPI), `web` (Vite dev server or built frontend), `postgres` (with pgvector extension available for later phases), `redis`, `minio` (S3-compatible storage).
-- One-command bring-up: `docker compose up` (NFR-12).
-- `.env.example` at repo root (or per-service) documenting required env vars; real `.env` files stay untracked.
-- **Exit check**: `docker compose up` gives a running API reachable from the host and a Postgres instance the API can connect to.
+- Services: `postgres` (pgvector-enabled, `pgvector/pgvector:pg16`), `redis`, `minio` (S3-compatible storage). **`api` and `web` deliberately run natively** (`uv run uvicorn app.main:app --reload`, `npm run dev`), not in Compose — avoids Docker-Desktop-on-Windows bind-mount/file-watcher slowness for the dev inner loop. A `web`/`api` Compose service can be added later for a prod-like preview if needed; NFR-12's "one-command setup" is satisfied for the infra dependencies, not the app processes themselves, at this stage.
+- `docker-compose.yml` lives at the repo root (not inside `backend/`) with an explicit `name: bidpilot`, so its container/network names never collide with an unrelated project.
+- A Postgres init script creates a separate `bidpilot_test` database (used by the backend test suite, `docs/testing.md` §2) and enables the `vector` extension in both databases, alongside `.env.example` files (root-adjacent, per-service) documenting required env vars; real `.env` files stay untracked.
+- **Exit check**: `docker compose up -d` brings up postgres/redis/minio healthy, and `uv run uvicorn app.main:app --reload` (run natively) connects to the Dockerized Postgres successfully.
 
 ### 0.2 Database and migrations
 - Add SQLAlchemy + Alembic to `backend`.

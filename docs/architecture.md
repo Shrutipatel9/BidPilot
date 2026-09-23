@@ -122,7 +122,7 @@ Nodes: Parser → Classifier → (parallel per question) Retriever → Drafting 
 
 ## 8. Infrastructure
 
-- **Docker Compose** services (local dev, Phase 0.1): `api`, `web`, `postgres` (with pgvector), `redis`, `minio`.
+- **Docker Compose** (repo-root `docker-compose.yml`, `name: bidpilot`) covers local-dev **infra only**: `postgres` (pgvector), `redis`, `minio`. `api` and `web` run natively (`uv run uvicorn app.main:app --reload`, `npm run dev`) rather than in Compose — deliberate, to avoid Docker-Desktop-on-Windows file-watcher overhead slowing down the dev inner loop. Revisit adding `api`/`web` Compose services if/when a prod-like local preview is actually needed.
 - **Production target**: AWS (ECS or EC2), S3 for file storage (MinIO is the local stand-in only), Bedrock/Textract/Comprehend for AI services.
 - **Config/secrets**: environment variables locally (`.env`, not committed), AWS Secrets Manager in production.
 - **CI/CD**: GitHub Actions (Phase 6.7) — lint, test, build; eval suite (Phase 3.6) runs separately, not on every commit, due to LLM cost.
