@@ -9,7 +9,14 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 from app.db.base import Base
-from app.models import membership, organization, refresh_token, user  # noqa: F401 — register on Base.metadata
+from app.models import (  # noqa: F401 — register on Base.metadata
+    audit_log,
+    invitation,
+    membership,
+    organization,
+    refresh_token,
+    user,
+)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

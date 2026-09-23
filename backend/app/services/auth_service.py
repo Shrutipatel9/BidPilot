@@ -18,6 +18,7 @@ from app.core.security import (
 )
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
+from app.services.audit_service import log_action
 from app.services.email_service import dev_mode_no_smtp, send_email
 
 _INVALID_CREDENTIALS = HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid email or password")
@@ -51,6 +52,7 @@ async def signup(db: AsyncSession, email: str, password: str, name: str | None) 
     verify_link = f"{settings.frontend_base_url}/verify-email?token={verify_token}"
     await send_email(user.email, "Verify your BidPilot email", f"Verify your email: {verify_link}")
 
+    await log_action(db, None, user.id, "user.signed_up", "user", str(user.id))
     access_token, refresh_token = await _issue_tokens(db, user.id)
     debug_link = verify_link if dev_mode_no_smtp() else None
     return user, access_token, refresh_token, debug_link
@@ -61,6 +63,7 @@ async def login(db: AsyncSession, email: str, password: str) -> tuple[User, str,
     if user is None or user.hashed_password is None or not verify_password(password, user.hashed_password):
         raise _INVALID_CREDENTIALS
 
+    await log_action(db, None, user.id, "user.logged_in", "user", str(user.id))
     access_token, refresh_token = await _issue_tokens(db, user.id)
     return user, access_token, refresh_token
 
@@ -84,8 +87,9 @@ async def refresh(db: AsyncSession, refresh_token_str: str) -> tuple[str, str]:
     if token_row is None:
         raise _INVALID_CREDENTIALS
     if token_row.revoked_at is not None:
-        # Reuse of an already-rotated-out refresh token — a theft/replay signal.
-        # TODO(0.4): log this to audit_log once that table exists.
+        # Reuse of an already-rotated-out refresh token — a theft/replay signal, worth its own record.
+        await log_action(db, None, user_id, "refresh_token.reuse_detected", "refresh_token", str(jti))
+        await db.commit()
         raise _INVALID_CREDENTIALS
     if token_row.expires_at < datetime.now(timezone.utc):
         raise _INVALID_CREDENTIALS
