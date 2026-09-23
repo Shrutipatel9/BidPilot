@@ -13,7 +13,7 @@ None of the tooling described below is set up yet as of Phase 0 — this is the 
 - **Run all**: `uv run pytest`
 - **Run one file**: `uv run pytest tests/services/test_projects.py`
 - **Run one test**: `uv run pytest tests/services/test_projects.py::test_create_project -v`
-- **Test database**: a separate test Postgres (via Docker Compose, once Phase 0.1 exists) or transactional rollback per test — pick one and use it consistently; don't test against the dev database.
+- **Test database** (settled in Phase 0.2): a dedicated `bidpilot_test` database in the same Compose Postgres container (created by `docker/postgres-init/01-create-test-db.sql`), migrated once per test session, with each test wrapped in a transaction + SAVEPOINT that's rolled back afterward (`join_transaction_mode="create_savepoint"`) — so app-code `commit()` calls during a test are safe without leaking state between tests. See `backend/tests/conftest.py` for the exact fixtures (`apply_migrations`, `engine`, `db_session`, `client`) and reuse them rather than reinventing this per test module. Never test against the dev database.
 - **Unit tests**: service-layer logic in isolation (mock external calls — LLM, S3, Stripe).
 - **Integration tests**: API routes through FastAPI's test client, hitting the real test database.
 - **Tenant isolation tests (mandatory, not optional)**: for every multi-tenant resource, an explicit test that org A cannot read/write org B's data through the API, even with a valid token for org A. This directly backs NFR-05 and the "zero cross-tenant leakage" success metric (client_requirements.md §14). Add this test the same PR a new tenant-scoped resource is added — don't defer it.

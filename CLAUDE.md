@@ -35,12 +35,17 @@ No test runner is configured yet.
 
 ### Backend (`backend/`)
 ```
+docker compose up -d                       # from repo root: postgres(+pgvector), redis, minio
 uv sync                                    # install/sync dependencies into .venv
 uv run uvicorn app.main:app --reload       # dev server, http://localhost:8000 (also try `uv run fastapi dev app/main.py`)
 uv add <package>                           # add a runtime dependency (updates pyproject.toml + uv.lock)
 uv add --dev <package>                     # add a dev-only dependency
+uv run pytest                              # run the backend test suite (needs the Compose stack up)
+uv run alembic revision --autogenerate -m "..."   # generate a migration from model changes
+uv run alembic upgrade head                # apply pending migrations
+uv run alembic downgrade -1                # roll back one migration
 ```
-No test runner, linter, or formatter is configured yet — when adding one, follow the stack choices in `docs/client_requirements.md` (§10 Technology Stack) rather than picking arbitrarily.
+`api`/`web` run natively rather than in Docker Compose — see `docs/architecture.md` §8. No linter/formatter chosen yet for the backend; when adding one, follow `docs/client_requirements.md` §10 rather than picking arbitrarily.
 
 Always run backend Python commands through `uv run ...` (or after `uv sync`, activating `backend/.venv`) rather than a bare system `python`/`pip`, so the right interpreter and locked dependencies are used.
 
@@ -87,7 +92,7 @@ When implementation needs a new env var or credential:
 
 ## Testing
 
-See `docs/testing.md` for the full strategy (backend pytest, frontend Vitest/RTL, Playwright E2E, AI eval suite) and how to run each — none of it is wired up yet as of Phase 0; set each layer up when the phase that needs it starts.
+See `docs/testing.md` for the full strategy (backend pytest, frontend Vitest/RTL, Playwright E2E, AI eval suite) and how to run each. Backend pytest is wired up as of Phase 0.2: async SQLAlchemy against a dedicated `bidpilot_test` database, migrated once per test session and rolled back per-test via a SAVEPOINT (`backend/tests/conftest.py`) — reuse the `db_session`/`client` fixtures rather than inventing a new pattern. Frontend Vitest/RTL and E2E aren't wired up yet; set them up when the phase that needs them starts.
 
 ## Project skills and subagents
 
