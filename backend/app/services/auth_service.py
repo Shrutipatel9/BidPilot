@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import HTTPException, status
+from fastapi import BackgroundTasks, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,7 +33,9 @@ async def _issue_tokens(db: AsyncSession, user_id: uuid.UUID) -> tuple[str, str]
     return access_token, refresh_token
 
 
-async def signup(db: AsyncSession, email: str, password: str, name: str | None) -> tuple[User, str, str, str | None]:
+async def signup(
+    db: AsyncSession, background_tasks: BackgroundTasks, email: str, password: str, name: str | None
+) -> tuple[User, str, str, str | None]:
     existing = await db.scalar(select(User).where(User.email == email))
     if existing is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "an account with this email already exists")
@@ -50,7 +52,11 @@ async def signup(db: AsyncSession, email: str, password: str, name: str | None) 
 
     verify_token = create_purpose_token(user.id, "email_verify", timedelta(hours=24))
     verify_link = f"{settings.frontend_base_url}/verify-email?token={verify_token}"
-    await send_email(user.email, "Verify your BidPilot email", f"Verify your email: {verify_link}")
+    # Backgrounded — an SMTP round-trip (real-world: 1-5s) must never add latency to the
+    # signup response the user is waiting on.
+    background_tasks.add_task(
+        send_email, user.email, "Verify your BidPilot email", f"Verify your email: {verify_link}"
+    )
 
     await log_action(db, None, user.id, "user.signed_up", "user", str(user.id))
     access_token, refresh_token = await _issue_tokens(db, user.id)
@@ -108,7 +114,7 @@ async def refresh(db: AsyncSession, refresh_token_str: str) -> tuple[str, str]:
     return new_access_token, new_refresh_token
 
 
-async def request_password_reset(db: AsyncSession, email: str) -> str | None:
+async def request_password_reset(db: AsyncSession, background_tasks: BackgroundTasks, email: str) -> str | None:
     user = await db.scalar(select(User).where(User.email == email))
     if user is None:
         return None  # don't reveal whether the email exists
@@ -117,7 +123,9 @@ async def request_password_reset(db: AsyncSession, email: str) -> str | None:
         user.id, "password_reset", timedelta(minutes=30), token_version=user.token_version
     )
     reset_link = f"{settings.frontend_base_url}/reset-password?token={reset_token}"
-    await send_email(user.email, "Reset your BidPilot password", f"Reset your password: {reset_link}")
+    background_tasks.add_task(
+        send_email, user.email, "Reset your BidPilot password", f"Reset your password: {reset_link}"
+    )
     return reset_link if dev_mode_no_smtp() else None
 
 

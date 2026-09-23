@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rbac import require_role
@@ -23,11 +23,14 @@ router = APIRouter(tags=["invitations"])
 async def create_invitation(
     org_id: uuid.UUID,
     body: CreateInvitationRequest,
+    background_tasks: BackgroundTasks,
     membership: Membership = Depends(require_role(MembershipRole.owner, MembershipRole.admin)),
     db: AsyncSession = Depends(get_db),
 ):
     org = await db.get(Organization, org_id)
-    debug_link = await invitation_service.create_invitation(db, org, membership, body.email, body.role)
+    debug_link = await invitation_service.create_invitation(
+        db, background_tasks, org, membership, body.email, body.role
+    )
     return CreateInvitationResponse(message="invitation sent", debug_link=debug_link)
 
 

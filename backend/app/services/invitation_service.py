@@ -3,7 +3,7 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import HTTPException, status
+from fastapi import BackgroundTasks, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,7 +27,12 @@ def _hash_token(token: str) -> str:
 
 
 async def create_invitation(
-    db: AsyncSession, org: Organization, inviter: Membership, email: str, role: MembershipRole
+    db: AsyncSession,
+    background_tasks: BackgroundTasks,
+    org: Organization,
+    inviter: Membership,
+    email: str,
+    role: MembershipRole,
 ) -> str | None:
     assert_can_assign_role(inviter.role, role)
 
@@ -45,7 +50,12 @@ async def create_invitation(
     await db.commit()
 
     accept_link = f"{settings.frontend_base_url}/accept-invitation?token={raw_token}"
-    await send_email(email, f"You've been invited to {org.name} on BidPilot", f"Accept your invite: {accept_link}")
+    background_tasks.add_task(
+        send_email,
+        email,
+        f"You've been invited to {org.name} on BidPilot",
+        f"Accept your invite: {accept_link}",
+    )
     return accept_link if dev_mode_no_smtp() else None
 
 

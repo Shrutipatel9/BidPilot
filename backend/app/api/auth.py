@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user
@@ -26,9 +26,9 @@ class SignupResponse(TokenResponse):
 
 
 @router.post("/signup", response_model=SignupResponse, status_code=201)
-async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):
+async def signup(body: SignupRequest, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     user, access_token, refresh_token, debug_link = await auth_service.signup(
-        db, body.email, body.password, body.name
+        db, background_tasks, body.email, body.password, body.name
     )
     return SignupResponse(
         access_token=access_token,
@@ -57,8 +57,10 @@ async def verify_email(body: VerifyEmailRequest, db: AsyncSession = Depends(get_
 
 
 @router.post("/request-password-reset", response_model=MessageResponse)
-async def request_password_reset(body: RequestPasswordResetRequest, db: AsyncSession = Depends(get_db)):
-    debug_link = await auth_service.request_password_reset(db, body.email)
+async def request_password_reset(
+    body: RequestPasswordResetRequest, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)
+):
+    debug_link = await auth_service.request_password_reset(db, background_tasks, body.email)
     return MessageResponse(message="if that email exists, a reset link has been sent", debug_link=debug_link)
 
 

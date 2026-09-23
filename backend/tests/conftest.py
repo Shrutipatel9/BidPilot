@@ -19,6 +19,18 @@ TEST_DATABASE_URL = settings.test_database_url
 
 
 @pytest.fixture(scope="session", autouse=True)
+def _isolate_email_from_real_smtp():
+    """Tests must never depend on a real external SMTP provider (slow, flaky, and sends real
+    email) — force the dev-mode fallback (console log + debug_link) for the whole test session
+    regardless of the developer's local .env, even when real SMTP credentials are configured
+    there for manual testing."""
+    original = settings.smtp_host
+    settings.smtp_host = None
+    yield
+    settings.smtp_host = original
+
+
+@pytest.fixture(scope="session", autouse=True)
 def apply_migrations() -> None:
     """Sync, non-async fixture — runs before any pytest-asyncio event loop exists, so
     Alembic's own asyncio.run() (inside alembic/env.py) never collides with one."""
