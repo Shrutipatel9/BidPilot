@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,11 +7,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.auth import router as auth_router
 from app.api.invitations import router as invitations_router
 from app.api.orgs import router as orgs_router
+from app.api.projects import router as projects_router
 from app.core.config import settings
+from app.core.storage import ensure_bucket
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="BidPilot API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await ensure_bucket()
+    yield
+
+
+app = FastAPI(title="BidPilot API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,6 +34,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(orgs_router)
 app.include_router(invitations_router)
+app.include_router(projects_router)
 
 
 @app.get("/health")

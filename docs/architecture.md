@@ -88,7 +88,7 @@ Core entities (client_requirements.md §12). `org_id` on every tenant-scoped tab
 | KnowledgeDocument | id, org_id, title, s3_key, type, tags, version, status, review_date | Phase 2 |
 | KnowledgeChunk | id, document_id, org_id, text, embedding, metadata (page, section) | Phase 2 |
 | LibraryAnswer | id, org_id, question, answer, embedding, tags, is_gold, approved_by, source_project | Phase 3 |
-| Comment | id, question_id, user_id, body | Phase 1 (basic) |
+| Comment | id, question_id, user_id, body | Phase 4 (fits alongside the fuller review workspace; not in any Phase 1 sub-phase's FR-IDs — see phase-1-llm-basics.md) |
 | WorkflowRun | id, project_id, graph_state_ref, status, tokens_used, cost | Phase 4 |
 | UsageLedger | id, org_id, credits_delta, reason, created_at | Phase 6 |
 | Subscription | id, org_id, stripe_subscription_id, plan, status, period_end | Phase 6 |

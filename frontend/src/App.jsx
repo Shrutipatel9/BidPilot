@@ -7,6 +7,9 @@ import CreateOrgPage from './pages/CreateOrgPage'
 import DashboardPage from './pages/DashboardPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import LoginPage from './pages/LoginPage'
+import NewProjectPage from './pages/NewProjectPage'
+import ProjectDetailPage from './pages/ProjectDetailPage'
+import ProjectListPage from './pages/ProjectListPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import SettingsMembersPage from './pages/SettingsMembersPage'
 import SignupPage from './pages/SignupPage'
@@ -28,6 +31,9 @@ const router = createBrowserRouter([
         children: [
           { path: '/', element: <DashboardPage /> },
           { path: '/settings/members', element: <SettingsMembersPage /> },
+          { path: '/projects', element: <ProjectListPage /> },
+          { path: '/projects/new', element: <NewProjectPage /> },
+          { path: '/projects/:projectId', element: <ProjectDetailPage /> },
         ],
       },
     ],

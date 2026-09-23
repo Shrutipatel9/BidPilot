@@ -15,6 +15,7 @@ from app.models import (  # noqa: F401 — register on Base.metadata
     membership,
     organization,
     refresh_token,
+    rfp_project,
     user,
 )
 
