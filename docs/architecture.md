@@ -98,8 +98,8 @@ Core entities (client_requirements.md §12). `org_id` on every tenant-scoped tab
 ## 5. Frontend architecture
 
 - **Routing**: React Router; route-level components in `src/pages/`.
-- **Server state**: TanStack Query for all API data (caching, refetch, mutations) — don't hand-roll fetch+useState+useEffect for server data.
-- **Local/UI state**: plain React state/context; no global state library unless a real cross-cutting need appears.
+- **State management (decided in Phase 0.5)**: Redux Toolkit is the single state-management layer — **RTK Query** (`createApi`) for all server/API data (caching, refetch, mutations; replaces an earlier TanStack Query plan), regular slices for client state (auth, current org). `redux-persist` (localStorage engine) persists only the `auth` slice — app code never calls `localStorage` directly. Chosen deliberately over mixing a separate server-state library with ad hoc Context, per the project owner's preference for one state system.
+- **Auth transport**: Bearer token in the `Authorization` header (not httpOnly cookies) — the access token is short-lived and the refresh token is DB-tracked/revocable server-side (see backend §3), which bounds the XSS-exposure tradeoff of header-based auth.
 - **Styling**: Tailwind CSS. See `docs/ui-ux.md` for component and design-system conventions.
 - **Real-time**: a WebSocket/SSE client (Phase 4) drives live drafting progress in the question workspace; falls back to polling only if streaming isn't available in a given environment.
 
