@@ -19,7 +19,7 @@ The repo is currently in early scaffold state (Phase 0 of the roadmap): a bare V
 - `docs/mvp.md` — **MVP is Phases 0-2**; Phase 3+ is post-MVP, confirm before starting it
 - `docs/roadmap.md` + `docs/phases/phase-N-*.md` — phased delivery plan with sub-phases and FR-ID traceability
 - `docs/architecture.md` — target system architecture (backend, frontend, data model, agent pipeline, infra)
-- `docs/ui-ux.md` — screens, navigation, core user flow, component conventions
+- `docs/ui-ux.md` — visual identity/design tokens, screens, navigation, core user flow, built component library (`frontend/src/components/`)
 - `docs/testing.md` — test strategy per layer, how to run each, AI eval approach
 
 ## Commands

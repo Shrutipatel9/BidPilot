@@ -26,7 +26,7 @@ Don't read a file's full contents when only one section is relevant — `archite
 Then, depending on what you're touching:
 
 - **Backend feature (API/service/model)**: `architecture.md` §2 (folders), §3 (backend), §4 (data model for the entities involved), §9 (tenant isolation — always) → `testing.md` §2 (backend tests + mandatory isolation test).
-- **Frontend feature (screen/component)**: `ui-ux.md` for the relevant screen (§3 finds it, then the specific section) → `architecture.md` §5 (frontend conventions) → `testing.md` §3.
+- **Frontend feature (screen/component)**: `ui-ux.md` §2 (visual identity/design tokens — always) and §7 (built component library — reuse before creating) → the relevant screen (§4 finds it, then the specific section) → `architecture.md` §5 (frontend conventions) → `testing.md` §3.
 - **LangGraph / agent work**: `architecture.md` §6 → the phase file (almost always `phase-4-agents-workflows.md`) → only if you need the original narrative/diagram, `client_requirements.md` §7 → `testing.md` §5 (AI eval, not regular tests).
 - **Data model change**: `architecture.md` §4, then check every phase file that references the entity so sub-phase scope stays consistent.
 - **Infra/DevOps (Docker, CI, deploy)**: `architecture.md` §8 → `testing.md` §6.

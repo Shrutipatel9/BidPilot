@@ -2,7 +2,7 @@
 
 **Theme**: Upload questionnaire → parse → LLM drafts answers (no RAG yet) → export.
 **Depends on**: Phase 0 (auth, orgs, tenant isolation).
-**Read alongside this file**: `docs/architecture.md` §3 (backend), §6 (agent pipeline — only the Parser/Drafting shape, not the full graph yet), `docs/ui-ux.md` §5 (question workspace).
+**Read alongside this file**: `docs/architecture.md` §3 (backend), §6 (agent pipeline — only the Parser/Drafting shape, not the full graph yet), `docs/ui-ux.md` §6 (question workspace) and §2 (visual identity/design tokens — apply these, don't default to unstyled scaffolding).
 
 This phase deliberately skips retrieval/citations — that's Phase 2. Confidence scores here can be a simple heuristic or LLM self-rating; don't over-build grounding logic that Phase 2 will replace.
 

@@ -26,7 +26,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthCard title="Log in to BidPilot">
+    <AuthCard title="Welcome back" subtitle="Log in to continue where you left off.">
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <TextInput
           label="Email"
@@ -35,9 +35,15 @@ export default function LoginPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
+          placeholder="jane@company.com"
         />
         <TextInput
           label="Password"
+          labelExtra={
+            <Link className="text-sm font-medium text-brand-600 hover:text-brand-700" to="/forgot-password">
+              Forgot password?
+            </Link>
+          }
           type="password"
           required
           value={password}
@@ -45,16 +51,14 @@ export default function LoginPage() {
           autoComplete="current-password"
         />
         <ErrorBanner error={error} />
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" loading={isLoading} className="mt-1 w-full">
           {isLoading ? 'Logging in…' : 'Log in'}
         </Button>
       </form>
-      <p className="mt-4 flex justify-between text-sm text-gray-600">
-        <Link className="text-purple-600 underline" to="/signup">
+      <p className="mt-6 text-center text-sm text-slate-500">
+        Don't have an account?{' '}
+        <Link className="font-medium text-brand-600 hover:text-brand-700" to="/signup">
           Sign up
-        </Link>
-        <Link className="text-purple-600 underline" to="/forgot-password">
-          Forgot password?
         </Link>
       </p>
     </AuthCard>

@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import AuthCard from '../components/form/AuthCard'
 import Button from '../components/form/Button'
+import Callout from '../components/form/Callout'
 import ErrorBanner from '../components/form/ErrorBanner'
 import TextInput from '../components/form/TextInput'
 import { useResetPasswordMutation } from '../features/auth/authApi'
@@ -25,7 +26,7 @@ export default function ResetPasswordPage() {
   if (!token) {
     return (
       <AuthCard title="Reset your password">
-        <p className="text-sm text-gray-600">This link is missing a reset token.</p>
+        <p className="text-sm text-slate-500">This link is missing a reset token.</p>
       </AuthCard>
     )
   }
@@ -41,20 +42,14 @@ export default function ResetPasswordPage() {
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           autoComplete="new-password"
+          placeholder="At least 8 characters"
         />
         <ErrorBanner error={error} />
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" loading={isLoading} className="w-full">
           {isLoading ? 'Saving…' : 'Reset password'}
         </Button>
       </form>
-      {isSuccess && (
-        <p className="text-sm text-gray-700">
-          Password reset.{' '}
-          <Link className="text-purple-600 underline" to="/login">
-            Log in
-          </Link>
-        </p>
-      )}
+      {isSuccess && <Callout variant="success">Password reset — redirecting you to log in…</Callout>}
     </AuthCard>
   )
 }

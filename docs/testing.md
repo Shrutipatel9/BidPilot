@@ -52,5 +52,5 @@ GitHub Actions: lint (frontend `npm run lint` via oxlint; add a backend linter/f
 
 Beyond automated tests, any UI-affecting change should be manually exercised in a running dev server before being called done (per the general "test the golden path in a browser" expectation) — for this app specifically, that means checking at least:
 - The change respects RBAC (try it as a role that shouldn't have access).
-- Loading/empty/error states render correctly, not just the happy path (`docs/ui-ux.md` §6).
+- Loading/empty/error states render correctly, not just the happy path (`docs/ui-ux.md` §7).
 - If it touches the question workspace, confidence/citation/insufficient-information states still render distinctly.

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 
 import AuthCard from '../components/form/AuthCard'
 import Button from '../components/form/Button'
+import Callout from '../components/form/Callout'
 import ErrorBanner from '../components/form/ErrorBanner'
 import TextInput from '../components/form/TextInput'
 import { setCredentials } from '../features/auth/authSlice'
@@ -27,16 +28,23 @@ export default function SignupPage() {
   }
 
   return (
-    <AuthCard title="Create your BidPilot account">
+    <AuthCard title="Create your account" subtitle="Start drafting answers your team can trust.">
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        <TextInput label="Name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
         <TextInput
-          label="Email"
+          label="Full name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoComplete="name"
+          placeholder="Jane Cooper"
+        />
+        <TextInput
+          label="Work email"
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
+          placeholder="jane@company.com"
         />
         <TextInput
           label="Password"
@@ -46,23 +54,24 @@ export default function SignupPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
+          placeholder="At least 8 characters"
         />
         <ErrorBanner error={error} />
         {data?.debug_link && (
-          <p className="text-xs text-gray-500">
+          <Callout variant="info">
             Dev mode — verification link:{' '}
-            <a className="text-purple-600 underline" href={data.debug_link}>
-              {data.debug_link}
+            <a className="font-medium underline underline-offset-2" href={data.debug_link}>
+              open it
             </a>
-          </p>
+          </Callout>
         )}
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Creating account…' : 'Sign up'}
+        <Button type="submit" loading={isLoading} className="mt-1 w-full">
+          {isLoading ? 'Creating account…' : 'Create account'}
         </Button>
       </form>
-      <p className="mt-4 text-sm text-gray-600">
+      <p className="mt-6 text-center text-sm text-slate-500">
         Already have an account?{' '}
-        <Link className="text-purple-600 underline" to="/login">
+        <Link className="font-medium text-brand-600 hover:text-brand-700" to="/login">
           Log in
         </Link>
       </p>

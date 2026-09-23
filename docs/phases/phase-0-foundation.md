@@ -39,7 +39,7 @@
 ### 0.5 Base frontend shell
 - Routing (React Router), auth pages (login/signup/reset), protected-route wrapper, org context/switcher.
 - Empty-state dashboard shell to land on after login (real widgets come in later phases).
-- **Read**: `docs/ui-ux.md` §2 (navigation) and §3 (screen list) before building this.
+- **Read**: `docs/ui-ux.md` §2 (visual identity/design tokens), §3 (navigation) and §4 (screen list) before building this.
 
 ## Exit criteria — demo
 

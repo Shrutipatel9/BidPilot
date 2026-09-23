@@ -25,7 +25,7 @@ export default function CreateOrgPage() {
   }
 
   return (
-    <AuthCard title="Create your organization">
+    <AuthCard title="Create your organization" subtitle="This is your team's shared workspace.">
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <TextInput
           label="Organization name"
@@ -33,9 +33,10 @@ export default function CreateOrgPage() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoFocus
+          placeholder="Acme Inc"
         />
         <ErrorBanner error={error} />
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" loading={isLoading} className="w-full">
           {isLoading ? 'Creating…' : 'Create organization'}
         </Button>
       </form>

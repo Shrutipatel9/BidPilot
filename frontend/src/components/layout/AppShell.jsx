@@ -1,21 +1,34 @@
 import { useEffect } from 'react'
+import {
+  BarChart3,
+  Building2,
+  FolderKanban,
+  LayoutDashboard,
+  Library,
+  LogOut,
+  Settings,
+  Sparkles,
+} from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 
-import { selectCurrentOrgId, selectCurrentUser, setCurrentOrgId } from '../../features/auth/authSlice'
+import Logo from '../Logo'
+import { logout, selectCurrentOrgId, selectCurrentUser, setCurrentOrgId } from '../../features/auth/authSlice'
 import { useListMyOrganizationsQuery } from '../../features/org/orgApi'
+import { initialsFor } from '../../lib/initials'
 
 const NAV_ITEMS = [
-  { label: 'Dashboard', to: '/', available: true },
-  { label: 'Projects', to: '/projects', available: false },
-  { label: 'Knowledge Base', to: '/knowledge-base', available: false },
-  { label: 'Answer Library', to: '/answer-library', available: false },
-  { label: 'Analytics', to: '/analytics', available: false },
-  { label: 'Settings', to: '/settings/members', available: true },
+  { label: 'Dashboard', to: '/', icon: LayoutDashboard, available: true },
+  { label: 'Projects', to: '/projects', icon: FolderKanban, available: false },
+  { label: 'Knowledge Base', to: '/knowledge-base', icon: Sparkles, available: false },
+  { label: 'Answer Library', to: '/answer-library', icon: Library, available: false },
+  { label: 'Analytics', to: '/analytics', icon: BarChart3, available: false },
+  { label: 'Settings', to: '/settings/members', icon: Settings, available: true },
 ]
 
 export default function AppShell() {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
   const currentUser = useSelector(selectCurrentUser)
   const currentOrgId = useSelector(selectCurrentOrgId)
   const { data: organizations = [] } = useListMyOrganizationsQuery()
@@ -26,52 +39,96 @@ export default function AppShell() {
     }
   }, [currentOrgId, organizations, dispatch])
 
+  function handleLogout() {
+    dispatch(logout())
+    navigate('/login')
+  }
+
   return (
-    <div className="flex min-h-screen">
-      <aside className="w-64 shrink-0 border-r border-gray-200 bg-gray-50 p-4 flex flex-col gap-6">
-        <div className="text-lg font-semibold">BidPilot</div>
+    <div className="flex min-h-screen bg-slate-50">
+      <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
+        <div className="flex h-16 items-center border-b border-slate-100 px-5">
+          <Logo />
+        </div>
 
-        <select
-          className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm"
-          value={currentOrgId ?? ''}
-          onChange={(e) => dispatch(setCurrentOrgId(e.target.value))}
-        >
-          {organizations.length === 0 && <option value="">No organizations yet</option>}
-          {organizations.map((org) => (
-            <option key={org.id} value={org.id}>
-              {org.name}
-            </option>
-          ))}
-        </select>
+        <div className="border-b border-slate-100 p-3">
+          <label className="relative block">
+            <Building2
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+              aria-hidden="true"
+            />
+            <select
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-8 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/15"
+              value={currentOrgId ?? ''}
+              onChange={(e) => dispatch(setCurrentOrgId(e.target.value))}
+            >
+              {organizations.length === 0 && <option value="">No organizations yet</option>}
+              {organizations.map((org) => (
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
-        <nav className="flex flex-col gap-1">
-          {NAV_ITEMS.map((item) =>
-            item.available ? (
+        <nav className="flex flex-1 flex-col gap-0.5 p-3">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon
+            if (!item.available) {
+              return (
+                <span
+                  key={item.to}
+                  title="Coming in a later phase"
+                  className="flex cursor-not-allowed items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-400"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <Icon className="size-4" aria-hidden="true" />
+                    {item.label}
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                    Soon
+                  </span>
+                </span>
+              )
+            }
+            return (
               <NavLink
                 key={item.to}
                 to={item.to}
+                end={item.to === '/'}
                 className={({ isActive }) =>
-                  `rounded px-3 py-2 text-sm ${isActive ? 'bg-purple-100 text-purple-900 font-medium' : 'text-gray-700 hover:bg-gray-100'}`
+                  `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-brand-50 text-brand-700'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`
                 }
               >
+                <Icon className="size-4" aria-hidden="true" />
                 {item.label}
               </NavLink>
-            ) : (
-              <span
-                key={item.to}
-                title="Coming in a later phase"
-                className="cursor-not-allowed rounded px-3 py-2 text-sm text-gray-400"
-              >
-                {item.label}
-              </span>
-            ),
-          )}
+            )
+          })}
         </nav>
 
-        <div className="mt-auto text-xs text-gray-500">{currentUser?.email}</div>
+        <div className="flex items-center gap-3 border-t border-slate-100 p-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+            {initialsFor(currentUser)}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-sm text-slate-700">{currentUser?.email}</span>
+          <button
+            type="button"
+            onClick={handleLogout}
+            title="Log out"
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          >
+            <LogOut className="size-4" aria-hidden="true" />
+          </button>
+        </div>
       </aside>
 
-      <main className="flex-1 p-6">
+      <main className="flex-1 overflow-y-auto p-8">
         <Outlet />
       </main>
     </div>

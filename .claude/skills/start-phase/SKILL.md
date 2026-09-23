@@ -18,7 +18,7 @@ Begin work on a BidPilot roadmap phase/sub-phase without loading the whole `docs
 
 3. **Read only the matching sections** of the other docs, based on what the sub-phase actually touches — don't read a whole file when one `§` covers it:
    - Backend/API/data model work → `docs/architecture.md` §2 (folders), §3 (backend), §4 (data model), §9 (tenant isolation — always, it's non-negotiable) → `docs/testing.md` §2.
-   - Frontend/screen work → `docs/ui-ux.md` (the relevant screen from its §3 table, then that section) → `docs/architecture.md` §5 → `docs/testing.md` §3.
+   - Frontend/screen work → `docs/ui-ux.md` §2 (visual identity/design tokens) and §7 (built component library — reuse before creating) → the relevant screen (its §4 table, then that section) → `docs/architecture.md` §5 → `docs/testing.md` §3.
    - LangGraph/agent work → `docs/architecture.md` §6 (+ `docs/phases/phase-4-agents-workflows.md` if not already the current phase file) → `docs/testing.md` §5.
    - Infra/DevOps → `docs/architecture.md` §8 → `docs/testing.md` §6.
    - Billing/Stripe → `docs/architecture.md` §9 (idempotency note).
