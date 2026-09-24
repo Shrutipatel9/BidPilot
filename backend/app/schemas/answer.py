@@ -13,6 +13,7 @@ class AnswerResponse(BaseModel):
     confidence: int | None
     status: AnswerStatus
     version: int
+    citations: list[dict]
 
     model_config = {"from_attributes": True}
 

@@ -1,9 +1,23 @@
 import io
+import uuid
 from unittest.mock import AsyncMock, patch
 
 import openpyxl
 
 from app.core.llm_provider import DraftAnswer, LLMDraftError
+from app.services.retrieval_service import RetrievedChunk
+
+_FAKE_CHUNKS = [
+    RetrievedChunk(
+        chunk_id=uuid.uuid4(),
+        document_id=uuid.uuid4(),
+        document_title="Security Policy",
+        page=None,
+        section="Encryption",
+        text="We encrypt all data at rest using AES-256.",
+        similarity=0.92,
+    )
+]
 
 
 async def _signup(client, email, password="correct-horse-battery"):
@@ -45,8 +59,10 @@ async def _setup_confirmed_project(client, org_id, token):
     return project_id
 
 
+@patch("app.services.drafting_service.retrieve_top_chunks", new_callable=AsyncMock)
 @patch("app.services.drafting_service.generate_draft_answer", new_callable=AsyncMock)
-async def test_drafting_creates_answers_and_revisions(mock_draft, client):
+async def test_drafting_creates_answers_and_revisions(mock_draft, mock_retrieve, client):
+    mock_retrieve.return_value = _FAKE_CHUNKS
     mock_draft.return_value = DraftAnswer(
         answer_text="Yes, we encrypt all data at rest using AES-256.",
         confidence=90,
@@ -74,8 +90,10 @@ async def test_drafting_creates_answers_and_revisions(mock_draft, client):
     assert resp.json()["status"] == "drafted"
 
 
+@patch("app.services.drafting_service.retrieve_top_chunks", new_callable=AsyncMock)
 @patch("app.services.drafting_service.generate_draft_answer", new_callable=AsyncMock)
-async def test_drafting_flags_needs_review_when_llm_says_so(mock_draft, client):
+async def test_drafting_flags_needs_review_when_llm_says_so(mock_draft, mock_retrieve, client):
+    mock_retrieve.return_value = _FAKE_CHUNKS
     mock_draft.return_value = DraftAnswer(
         answer_text="We believe so, but cannot confirm without more information.",
         confidence=30,
@@ -93,8 +111,10 @@ async def test_drafting_flags_needs_review_when_llm_says_so(mock_draft, client):
     assert all(a["status"] == "needs_review" for a in resp.json())
 
 
+@patch("app.services.drafting_service.retrieve_top_chunks", new_callable=AsyncMock)
 @patch("app.services.drafting_service.generate_draft_answer", new_callable=AsyncMock)
-async def test_drafting_failure_does_not_abort_whole_batch(mock_draft, client):
+async def test_drafting_failure_does_not_abort_whole_batch(mock_draft, mock_retrieve, client):
+    mock_retrieve.return_value = _FAKE_CHUNKS
     # First question fails outright, second succeeds — the batch must still complete both.
     mock_draft.side_effect = [LLMDraftError("provider down"), DraftAnswer(
         answer_text="Yes.", confidence=70, choice="Yes", needs_review=False
