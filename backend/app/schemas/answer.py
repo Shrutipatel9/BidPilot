@@ -15,3 +15,11 @@ class AnswerResponse(BaseModel):
     version: int
 
     model_config = {"from_attributes": True}
+
+
+class UpdateAnswerRequest(BaseModel):
+    text: str
+
+
+class RejectAnswerRequest(BaseModel):
+    reason: str

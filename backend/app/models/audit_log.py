@@ -18,6 +18,7 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String(100), nullable=False)
     entity_type: Mapped[str] = mapped_column(String(100), nullable=False)
     entity_id: Mapped[str | None] = mapped_column(String(255), default=None)
+    details: Mapped[str | None] = mapped_column(String(1000), default=None)
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )

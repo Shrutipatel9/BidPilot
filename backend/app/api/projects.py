@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.rbac import get_membership, require_role
 from app.db.session import get_db
 from app.models.membership import Membership, MembershipRole
-from app.schemas.answer import AnswerResponse
+from app.schemas.answer import AnswerResponse, RejectAnswerRequest, UpdateAnswerRequest
 from app.schemas.project import ProjectResponse
 from app.schemas.question import QuestionResponse, UpdateQuestionRequest
 from app.services import answer_service, project_service, question_service
@@ -17,6 +17,7 @@ from app.services.drafting_service import run_drafting_for_project
 router = APIRouter(prefix="/api/orgs/{org_id}/projects", tags=["projects"])
 
 _EDITOR_ROLES = (MembershipRole.owner, MembershipRole.admin, MembershipRole.responder)
+_REVIEW_ROLES = (*_EDITOR_ROLES, MembershipRole.reviewer)
 
 
 @router.post("", response_model=ProjectResponse, status_code=201)
@@ -132,3 +133,44 @@ async def list_answers(
     await project_service.get_project(db, org_id, project_id)
     answers = await answer_service.list_answers(db, project_id)
     return [AnswerResponse.model_validate(a) for a in answers]
+
+
+@router.patch("/{project_id}/answers/{answer_id}", response_model=AnswerResponse)
+async def update_answer(
+    org_id: uuid.UUID,
+    project_id: uuid.UUID,
+    answer_id: uuid.UUID,
+    body: UpdateAnswerRequest,
+    membership: Membership = Depends(require_role(*_EDITOR_ROLES)),
+    db: AsyncSession = Depends(get_db),
+):
+    await project_service.get_project(db, org_id, project_id)
+    answer = await answer_service.update_answer(db, project_id, answer_id, org_id, membership.user_id, body.text)
+    return AnswerResponse.model_validate(answer)
+
+
+@router.post("/{project_id}/answers/{answer_id}/approve", response_model=AnswerResponse)
+async def approve_answer(
+    org_id: uuid.UUID,
+    project_id: uuid.UUID,
+    answer_id: uuid.UUID,
+    membership: Membership = Depends(require_role(*_REVIEW_ROLES)),
+    db: AsyncSession = Depends(get_db),
+):
+    await project_service.get_project(db, org_id, project_id)
+    answer = await answer_service.approve_answer(db, project_id, answer_id, org_id, membership.user_id)
+    return AnswerResponse.model_validate(answer)
+
+
+@router.post("/{project_id}/answers/{answer_id}/reject", response_model=AnswerResponse)
+async def reject_answer(
+    org_id: uuid.UUID,
+    project_id: uuid.UUID,
+    answer_id: uuid.UUID,
+    body: RejectAnswerRequest,
+    membership: Membership = Depends(require_role(*_REVIEW_ROLES)),
+    db: AsyncSession = Depends(get_db),
+):
+    await project_service.get_project(db, org_id, project_id)
+    answer = await answer_service.reject_answer(db, project_id, answer_id, org_id, membership.user_id, body.reason)
+    return AnswerResponse.model_validate(answer)

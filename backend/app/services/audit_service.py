@@ -12,6 +12,7 @@ async def log_action(
     action: str,
     entity_type: str,
     entity_id: str | None = None,
+    details: str | None = None,
 ) -> None:
     db.add(
         AuditLog(
@@ -20,6 +21,7 @@ async def log_action(
             action=action,
             entity_type=entity_type,
             entity_id=entity_id,
+            details=details,
         )
     )
     # Deliberately no commit() here — callers add this to the same transaction as the action

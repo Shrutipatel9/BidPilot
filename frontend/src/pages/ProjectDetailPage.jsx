@@ -1,22 +1,31 @@
-import { useState } from 'react'
-import { FileSearch, Loader2, Sparkles } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Check, FileSearch, Loader2, Sparkles, X } from 'lucide-react'
 import { useSelector } from 'react-redux'
 import { useParams } from 'react-router-dom'
 
+import ConfidenceBadge from '../components/ConfidenceBadge'
 import ProjectStatusBadge from '../components/ProjectStatusBadge'
+import StatusBadge from '../components/StatusBadge'
 import Button from '../components/form/Button'
 import ErrorBanner from '../components/form/ErrorBanner'
-import { selectCurrentOrgId } from '../features/auth/authSlice'
+import { selectCurrentOrgId, selectCurrentUser } from '../features/auth/authSlice'
+import { useListMembersQuery } from '../features/org/orgApi'
 import {
+  useApproveAnswerMutation,
   useConfirmQuestionsMutation,
   useGetProjectQuery,
   useListAnswersQuery,
   useListQuestionsQuery,
   useParseProjectMutation,
+  useRejectAnswerMutation,
   useStartDraftingMutation,
+  useUpdateAnswerMutation,
   useUpdateQuestionMutation,
 } from '../features/project/projectApi'
 import { QUESTION_TYPE_LABELS } from '../lib/questionTypes'
+
+const _EDITOR_ROLES = new Set(['owner', 'admin', 'responder'])
+const _REVIEW_ROLES = new Set(['owner', 'admin', 'responder', 'reviewer'])
 
 const QUESTION_TYPES = Object.keys(QUESTION_TYPE_LABELS)
 
@@ -55,13 +64,126 @@ function QuestionRow({ orgId, projectId, question }) {
   )
 }
 
-function DraftingSection({ orgId, projectId, project, questionCount }) {
+function ReviewDetailPane({ orgId, projectId, question, answer, myRole }) {
+  const [text, setText] = useState(answer.text)
+  const [showRejectForm, setShowRejectForm] = useState(false)
+  const [reason, setReason] = useState('')
+
+  const [updateAnswer, { isLoading: saving, error: saveError }] = useUpdateAnswerMutation()
+  const [approveAnswer, { isLoading: approving, error: approveError }] = useApproveAnswerMutation()
+  const [rejectAnswer, { isLoading: rejecting, error: rejectError }] = useRejectAnswerMutation()
+
+  // Reset local edit state when the selected question changes (not on every re-render).
+  const [lastAnswerId, setLastAnswerId] = useState(answer.id)
+  if (answer.id !== lastAnswerId) {
+    setLastAnswerId(answer.id)
+    setText(answer.text)
+    setShowRejectForm(false)
+    setReason('')
+  }
+
+  const canEdit = _EDITOR_ROLES.has(myRole)
+  const canReview = _REVIEW_ROLES.has(myRole)
+  const dirty = text !== answer.text
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <h3 className="text-sm font-medium leading-relaxed text-slate-900">{question.text}</h3>
+        <StatusBadge status={answer.status} />
+      </div>
+      <div className="mb-3">
+        <ConfidenceBadge confidence={answer.confidence} />
+        {answer.choice && (
+          <span className="ml-2 text-xs font-medium text-slate-500">Selected: {answer.choice}</span>
+        )}
+      </div>
+
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        readOnly={!canEdit}
+        rows={8}
+        className="w-full flex-1 resize-none rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15 disabled:bg-slate-50"
+      />
+
+      <ErrorBanner error={saveError || approveError || rejectError} />
+
+      {showRejectForm ? (
+        <div className="mt-3 flex flex-col gap-2">
+          <input
+            autoFocus
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Why is this answer being rejected?"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15"
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() =>
+                rejectAnswer({ orgId, projectId, answerId: answer.id, reason }).then((r) => {
+                  if (r.data) setShowRejectForm(false)
+                })
+              }
+              loading={rejecting}
+              disabled={!reason.trim()}
+            >
+              Confirm reject
+            </Button>
+            <Button variant="ghost" onClick={() => setShowRejectForm(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 flex gap-2">
+          {canEdit && (
+            <Button
+              variant="secondary"
+              onClick={() => updateAnswer({ orgId, projectId, answerId: answer.id, text })}
+              loading={saving}
+              disabled={!dirty}
+            >
+              Save
+            </Button>
+          )}
+          {canReview && (
+            <>
+              <Button
+                onClick={() => approveAnswer({ orgId, projectId, answerId: answer.id })}
+                loading={approving}
+              >
+                <Check className="size-4" aria-hidden="true" />
+                Approve
+              </Button>
+              <Button variant="ghost" onClick={() => setShowRejectForm(true)}>
+                <X className="size-4" aria-hidden="true" />
+                Reject
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DraftingSection({ orgId, projectId, project, questions, myRole }) {
+  const questionCount = questions.length
   const [startDrafting, { isLoading: starting, error: startError }] = useStartDraftingMutation()
   const isDrafting = project.status === 'drafting'
   const { data: answers = [] } = useListAnswersQuery(
     { orgId, projectId },
     { pollingInterval: isDrafting ? 2000 : 0 },
   )
+  const [selectedQuestionId, setSelectedQuestionId] = useState(null)
+
+  const answersByQuestionId = useMemo(() => {
+    const map = new Map()
+    for (const answer of answers) map.set(answer.question_id, answer)
+    return map
+  }, [answers])
 
   if (project.status === 'questions_confirmed') {
     return (
@@ -97,10 +219,42 @@ function DraftingSection({ orgId, projectId, project, questionCount }) {
     )
   }
 
+  const selectedQuestion =
+    questions.find((q) => q.id === selectedQuestionId) ?? questions[0] ?? null
+  const selectedAnswer = selectedQuestion ? answersByQuestionId.get(selectedQuestion.id) : null
+
   return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-      {draftedCount} of {questionCount} question{questionCount === 1 ? '' : 's'} drafted. Review lands in the next
-      sub-phase.
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4">
+      <div className="max-h-[70vh] overflow-y-auto rounded-xl border border-slate-200 bg-white">
+        {questions.map((question) => {
+          const answer = answersByQuestionId.get(question.id)
+          const isSelected = selectedQuestion?.id === question.id
+          return (
+            <button
+              key={question.id}
+              onClick={() => setSelectedQuestionId(question.id)}
+              className={`flex w-full flex-col gap-1.5 border-b border-slate-100 px-4 py-3 text-left last:border-0 hover:bg-slate-50 ${isSelected ? 'bg-brand-50/60' : ''}`}
+            >
+              <p className="line-clamp-2 text-sm text-slate-800">{question.text}</p>
+              {answer && <StatusBadge status={answer.status} />}
+            </button>
+          )
+        })}
+      </div>
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        {selectedQuestion && selectedAnswer ? (
+          <ReviewDetailPane
+            key={selectedAnswer.id}
+            orgId={orgId}
+            projectId={projectId}
+            question={selectedQuestion}
+            answer={selectedAnswer}
+            myRole={myRole}
+          />
+        ) : (
+          <p className="text-sm text-slate-400">Select a question to review its answer.</p>
+        )}
+      </div>
     </div>
   )
 }
@@ -108,7 +262,18 @@ function DraftingSection({ orgId, projectId, project, questionCount }) {
 export default function ProjectDetailPage() {
   const { projectId } = useParams()
   const orgId = useSelector(selectCurrentOrgId)
-  const { data: project, isLoading: projectLoading } = useGetProjectQuery({ orgId, projectId }, { skip: !orgId })
+  // Polls while a background drafting run may be in progress, since RTK Query has no way to
+  // push us an update when the BackgroundTasks job on the server flips the project's status.
+  const [pollProjectStatus, setPollProjectStatus] = useState(false)
+  const { data: project, isLoading: projectLoading } = useGetProjectQuery(
+    { orgId, projectId },
+    { skip: !orgId, pollingInterval: pollProjectStatus ? 2000 : 0 },
+  )
+  const [lastSeenStatus, setLastSeenStatus] = useState()
+  if (project?.status !== lastSeenStatus) {
+    setLastSeenStatus(project?.status)
+    setPollProjectStatus(project?.status === 'drafting')
+  }
   const { data: questions = [], isLoading: questionsLoading } = useListQuestionsQuery(
     { orgId, projectId },
     { skip: !orgId },
@@ -116,6 +281,10 @@ export default function ProjectDetailPage() {
   const [parseProject, { isLoading: parsing, error: parseError }] = useParseProjectMutation()
   const [confirmQuestions, { isLoading: confirming, error: confirmError }] = useConfirmQuestionsMutation()
   const [confirmed, setConfirmed] = useState(false)
+
+  const currentUser = useSelector(selectCurrentUser)
+  const { data: members = [] } = useListMembersQuery(orgId, { skip: !orgId })
+  const myRole = members.find((m) => m.email === currentUser?.email)?.role
 
   if (projectLoading || !project) {
     return <p className="text-sm text-slate-400">Loading…</p>
@@ -126,7 +295,7 @@ export default function ProjectDetailPage() {
   const isPastMapping = project.status !== 'uploaded' || confirmed
 
   return (
-    <div className="max-w-4xl">
+    <div className={isPastMapping && project.status !== 'questions_confirmed' ? 'max-w-6xl' : 'max-w-4xl'}>
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{project.name}</h1>
@@ -198,7 +367,7 @@ export default function ProjectDetailPage() {
       )}
 
       {isPastMapping && (
-        <DraftingSection orgId={orgId} projectId={projectId} project={project} questionCount={questions.length} />
+        <DraftingSection orgId={orgId} projectId={projectId} project={project} questions={questions} myRole={myRole} />
       )}
     </div>
   )

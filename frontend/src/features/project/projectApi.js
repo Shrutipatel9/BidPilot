@@ -76,6 +76,29 @@ export const projectApi = createApi({
       }),
       providesTags: ['Answers'],
     }),
+    updateAnswer: builder.mutation({
+      query: ({ orgId, projectId, answerId, text }) => ({
+        url: `/api/orgs/${orgId}/projects/${projectId}/answers/${answerId}`,
+        method: 'PATCH',
+        data: { text },
+      }),
+      invalidatesTags: ['Answers'],
+    }),
+    approveAnswer: builder.mutation({
+      query: ({ orgId, projectId, answerId }) => ({
+        url: `/api/orgs/${orgId}/projects/${projectId}/answers/${answerId}/approve`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Answers'],
+    }),
+    rejectAnswer: builder.mutation({
+      query: ({ orgId, projectId, answerId, reason }) => ({
+        url: `/api/orgs/${orgId}/projects/${projectId}/answers/${answerId}/reject`,
+        method: 'POST',
+        data: { reason },
+      }),
+      invalidatesTags: ['Answers'],
+    }),
   }),
 })
 
@@ -89,4 +112,7 @@ export const {
   useConfirmQuestionsMutation,
   useStartDraftingMutation,
   useListAnswersQuery,
+  useUpdateAnswerMutation,
+  useApproveAnswerMutation,
+  useRejectAnswerMutation,
 } = projectApi
