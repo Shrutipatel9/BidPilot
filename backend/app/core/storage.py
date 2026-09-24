@@ -50,6 +50,10 @@ async def download_bytes(key: str) -> bytes:
     return await asyncio.to_thread(obj["Body"].read)
 
 
+async def delete_object(key: str) -> None:
+    await asyncio.to_thread(_client().delete_object, Bucket=settings.s3_bucket, Key=key)
+
+
 async def presigned_get_url(key: str, expires_in: int = 3600) -> str:
     return await asyncio.to_thread(
         _client().generate_presigned_url,

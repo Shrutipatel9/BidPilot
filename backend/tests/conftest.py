@@ -3,6 +3,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import AsyncIterator
+from unittest.mock import Mock
 
 import pytest
 import pytest_asyncio
@@ -14,6 +15,7 @@ from app.core.config import settings
 from app.db import session as db_session_module
 from app.db.session import get_db
 from app.main import app
+from app.services import knowledge_service
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 TEST_DATABASE_URL = settings.test_database_url
@@ -95,9 +97,21 @@ async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     original_factory = db_session_module.async_session_factory
     db_session_module.async_session_factory = lambda: _ReuseSessionContextManager(db_session)
 
+    # knowledge_service.create_document/replace_document dispatch a real Celery task
+    # (ingest_document_task.delay(...)). Celery's own "run it inline for tests" mode
+    # (task_always_eager) doesn't work here: the task wrapper calls asyncio.run() internally
+    # (see app/workers/ingestion_tasks.py), which raises if invoked from inside a loop that's
+    # already running — exactly the situation inside an async test. So tests never dispatch the
+    # real task at all; ingestion-pipeline tests instead call
+    # ingestion_service.ingest_document(...) directly (an async function, awaitable on the
+    # test's own loop, exactly like drafting_service is tested).
+    original_delay = knowledge_service.ingest_document_task.delay
+    knowledge_service.ingest_document_task.delay = Mock()
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
     db_session_module.async_session_factory = original_factory
+    knowledge_service.ingest_document_task.delay = original_delay
     app.dependency_overrides.clear()

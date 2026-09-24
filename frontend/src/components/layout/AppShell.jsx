@@ -20,7 +20,7 @@ import { initialsFor } from '../../lib/initials'
 const NAV_ITEMS = [
   { label: 'Dashboard', to: '/', icon: LayoutDashboard, available: true },
   { label: 'Projects', to: '/projects', icon: FolderKanban, available: true },
-  { label: 'Knowledge Base', to: '/knowledge-base', icon: Sparkles, available: false },
+  { label: 'Knowledge Base', to: '/knowledge-base', icon: Sparkles, available: true },
   { label: 'Answer Library', to: '/answer-library', icon: Library, available: false },
   { label: 'Analytics', to: '/analytics', icon: BarChart3, available: false },
   { label: 'Settings', to: '/settings/members', icon: Settings, available: true },

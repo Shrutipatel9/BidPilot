@@ -4,6 +4,7 @@ import { FLUSH, PAUSE, PERSIST, PURGE, REGISTER, REHYDRATE, persistReducer, pers
 import storage from './localStorageEngine'
 import authReducer, { logout } from '../features/auth/authSlice'
 import { authApi } from '../features/auth/authApi'
+import { knowledgeApi } from '../features/knowledge/knowledgeApi'
 import { orgApi } from '../features/org/orgApi'
 import { projectApi } from '../features/project/projectApi'
 
@@ -20,6 +21,7 @@ const resetApiCachesOnLogout = () => (next) => (action) => {
     next(authApi.util.resetApiState())
     next(orgApi.util.resetApiState())
     next(projectApi.util.resetApiState())
+    next(knowledgeApi.util.resetApiState())
   }
   return result
 }
@@ -33,6 +35,7 @@ const rootReducer = combineReducers({
   [authApi.reducerPath]: authApi.reducer,
   [orgApi.reducerPath]: orgApi.reducer,
   [projectApi.reducerPath]: projectApi.reducer,
+  [knowledgeApi.reducerPath]: knowledgeApi.reducer,
 })
 
 export const store = configureStore({
@@ -49,7 +52,13 @@ export const store = configureStore({
         // specifically rather than disabling serializability checking more broadly.
         ignoredActionPaths: ['meta.arg.originalArgs.file'],
       },
-    }).concat(authApi.middleware, orgApi.middleware, projectApi.middleware, resetApiCachesOnLogout),
+    }).concat(
+      authApi.middleware,
+      orgApi.middleware,
+      projectApi.middleware,
+      knowledgeApi.middleware,
+      resetApiCachesOnLogout,
+    ),
 })
 
 export const persistor = persistStore(store)

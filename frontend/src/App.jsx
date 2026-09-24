@@ -6,6 +6,7 @@ import AcceptInvitationPage from './pages/AcceptInvitationPage'
 import CreateOrgPage from './pages/CreateOrgPage'
 import DashboardPage from './pages/DashboardPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import KnowledgeBasePage from './pages/KnowledgeBasePage'
 import LoginPage from './pages/LoginPage'
 import NewProjectPage from './pages/NewProjectPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
@@ -34,6 +35,7 @@ const router = createBrowserRouter([
           { path: '/projects', element: <ProjectListPage /> },
           { path: '/projects/new', element: <NewProjectPage /> },
           { path: '/projects/:projectId', element: <ProjectDetailPage /> },
+          { path: '/knowledge-base', element: <KnowledgeBasePage /> },
         ],
       },
     ],
