@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileSearch } from 'lucide-react'
+import { FileSearch, Loader2, Sparkles } from 'lucide-react'
 import { useSelector } from 'react-redux'
 import { useParams } from 'react-router-dom'
 
@@ -10,8 +10,10 @@ import { selectCurrentOrgId } from '../features/auth/authSlice'
 import {
   useConfirmQuestionsMutation,
   useGetProjectQuery,
+  useListAnswersQuery,
   useListQuestionsQuery,
   useParseProjectMutation,
+  useStartDraftingMutation,
   useUpdateQuestionMutation,
 } from '../features/project/projectApi'
 import { QUESTION_TYPE_LABELS } from '../lib/questionTypes'
@@ -50,6 +52,56 @@ function QuestionRow({ orgId, projectId, question }) {
       </td>
       <td className="w-40 py-2.5 align-top text-sm text-slate-500">{question.section || '—'}</td>
     </tr>
+  )
+}
+
+function DraftingSection({ orgId, projectId, project, questionCount }) {
+  const [startDrafting, { isLoading: starting, error: startError }] = useStartDraftingMutation()
+  const isDrafting = project.status === 'drafting'
+  const { data: answers = [] } = useListAnswersQuery(
+    { orgId, projectId },
+    { pollingInterval: isDrafting ? 2000 : 0 },
+  )
+
+  if (project.status === 'questions_confirmed') {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white">
+        <div className="flex max-w-sm flex-col items-center text-center">
+          <span className="mb-5 flex size-14 items-center justify-center rounded-2xl bg-brand-50">
+            <Sparkles className="size-7 text-brand-600" aria-hidden="true" />
+          </span>
+          <h2 className="text-base font-semibold text-slate-900">Ready to draft</h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-500">
+            {questionCount} question{questionCount === 1 ? '' : 's'} confirmed. BidPilot will draft an answer for
+            each one.
+          </p>
+          <ErrorBanner error={startError} />
+          <Button onClick={() => startDrafting({ orgId, projectId })} loading={starting} className="mt-6">
+            {starting ? 'Starting…' : 'Start drafting'}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const draftedCount = answers.filter((a) => a.status !== 'not_started').length
+
+  if (isDrafting) {
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white">
+        <Loader2 className="size-8 animate-spin text-brand-600" aria-hidden="true" />
+        <p className="text-sm text-slate-600">
+          Drafting answers… {draftedCount} / {questionCount}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+      {draftedCount} of {questionCount} question{questionCount === 1 ? '' : 's'} drafted. Review lands in the next
+      sub-phase.
+    </div>
   )
 }
 
@@ -146,10 +198,7 @@ export default function ProjectDetailPage() {
       )}
 
       {isPastMapping && (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-          {questions.length} question{questions.length === 1 ? '' : 's'} confirmed. Drafting lands in the next
-          sub-phase.
-        </div>
+        <DraftingSection orgId={orgId} projectId={projectId} project={project} questionCount={questions.length} />
       )}
     </div>
   )

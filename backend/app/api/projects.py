@@ -2,15 +2,17 @@ import json
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, Form, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rbac import get_membership, require_role
 from app.db.session import get_db
 from app.models.membership import Membership, MembershipRole
+from app.schemas.answer import AnswerResponse
 from app.schemas.project import ProjectResponse
 from app.schemas.question import QuestionResponse, UpdateQuestionRequest
-from app.services import project_service, question_service
+from app.services import answer_service, project_service, question_service
+from app.services.drafting_service import run_drafting_for_project
 
 router = APIRouter(prefix="/api/orgs/{org_id}/projects", tags=["projects"])
 
@@ -105,3 +107,28 @@ async def confirm_questions(
     project = await project_service.get_project(db, org_id, project_id)
     project = await question_service.confirm_questions(db, project, membership.user_id)
     return ProjectResponse.model_validate(project)
+
+
+@router.post("/{project_id}/draft", status_code=202)
+async def start_drafting(
+    org_id: uuid.UUID,
+    project_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    membership: Membership = Depends(require_role(*_EDITOR_ROLES)),
+    db: AsyncSession = Depends(get_db),
+):
+    await project_service.get_project(db, org_id, project_id)  # 404s / tenant-scopes the project_id
+    background_tasks.add_task(run_drafting_for_project, project_id, org_id, membership.user_id)
+    return {"status": "queued"}
+
+
+@router.get("/{project_id}/answers", response_model=list[AnswerResponse])
+async def list_answers(
+    org_id: uuid.UUID,
+    project_id: uuid.UUID,
+    membership: Membership = Depends(get_membership),
+    db: AsyncSession = Depends(get_db),
+):
+    await project_service.get_project(db, org_id, project_id)
+    answers = await answer_service.list_answers(db, project_id)
+    return [AnswerResponse.model_validate(a) for a in answers]

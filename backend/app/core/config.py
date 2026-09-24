@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     aws_access_key_id: str = "minioadmin"
     aws_secret_access_key: str = "minioadmin"
 
+    # Phase 1.3 — OpenAI preferred if configured, else Gemini.
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-4o-mini"
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-3.6-flash"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

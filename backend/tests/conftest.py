@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
+from app.db import session as db_session_module
 from app.db.session import get_db
 from app.main import app
 
@@ -64,13 +65,39 @@ async def db_session(engine) -> AsyncIterator[AsyncSession]:
         await outer.rollback()  # undoes everything the test did, including app-code commit() calls
 
 
+class _ReuseSessionContextManager:
+    """Makes an already-open AsyncSession usable as `async with factory() as db` — used to
+    stand in for db_session_module.async_session_factory during tests (see below)."""
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def __aenter__(self) -> AsyncSession:
+        return self._session
+
+    async def __aexit__(self, *exc_info) -> bool:
+        return False
+
+
 @pytest_asyncio.fixture(loop_scope="session")
 async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     async def override_get_db():
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+
+    # Background tasks (e.g. drafting_service.run_drafting_for_project) open their own DB
+    # session via db_session_module.async_session_factory — a genuinely new connection
+    # wouldn't see data still inside this test's uncommitted outer transaction (db_session's
+    # SAVEPOINT-based isolation). Patching the factory to hand back this same session, for the
+    # duration of the test, keeps background-task code paths testable without weakening that
+    # isolation for anything else.
+    original_factory = db_session_module.async_session_factory
+    db_session_module.async_session_factory = lambda: _ReuseSessionContextManager(db_session)
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+    db_session_module.async_session_factory = original_factory
     app.dependency_overrides.clear()

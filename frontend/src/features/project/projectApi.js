@@ -62,6 +62,20 @@ export const projectApi = createApi({
       }),
       invalidatesTags: ['Projects', 'Questions'],
     }),
+    startDrafting: builder.mutation({
+      query: ({ orgId, projectId }) => ({
+        url: `/api/orgs/${orgId}/projects/${projectId}/draft`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Projects'],
+    }),
+    listAnswers: builder.query({
+      query: ({ orgId, projectId }) => ({
+        url: `/api/orgs/${orgId}/projects/${projectId}/answers`,
+        method: 'GET',
+      }),
+      providesTags: ['Answers'],
+    }),
   }),
 })
 
@@ -73,4 +87,6 @@ export const {
   useListQuestionsQuery,
   useUpdateQuestionMutation,
   useConfirmQuestionsMutation,
+  useStartDraftingMutation,
+  useListAnswersQuery,
 } = projectApi
