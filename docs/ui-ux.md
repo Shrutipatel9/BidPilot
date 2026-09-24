@@ -99,8 +99,11 @@ Tailwind CSS utility classes; extract a shared component when a pattern repeats 
 - `form/Callout` — `info`/`success` icon-led banner, for anything that isn't strictly an error (dev-mode debug links, success confirmations — see §1's "every action gives visible feedback").
 - `form/AuthCard` — the split-screen layout for every unauthenticated page (signup, login, password reset, accept-invitation, create-organization): brand gradient + value-prop copy on the left (desktop only), the form on the right. Don't build a new centered-box layout for another auth-style page — extend this one.
 - `layout/AppShell` — the authenticated app frame: fixed sidebar (nav with icons, "Soon" badges on not-yet-built sections, org switcher, avatar+email+logout footer) and a scrollable `<main>`. New authenticated pages are routed as children of this, not given their own layout.
+- `StatusBadge`/`ConfidenceBadge` (Phase 1.4, `components/`) — same style-map pattern as `RoleBadge`, for `Answer.status` and confidence thresholds (emerald ≥80, amber 50-79, rose <50) in the question review pane.
+- `CitationChip` (Phase 2.6, `components/CitationChip.jsx`) — document title + page/section, click toggles an inline snippet preview from the citation's own `snippet` field (no extra request). Shared by the review pane's citation list and the knowledge base search results.
+- `DocumentStatusBadge` (Phase 2.1, `components/`) — same pattern again, for `KnowledgeDocument.status`.
 
-**Still to build** (later phases, once the underlying feature exists — don't build the component before the data it displays exists): `StatusBadge`/`ConfidenceBadge` (question workspace, Phase 1+), `CitationChip` (Phase 2+), `DataTable` (generalize `SettingsMembersPage`'s list once a second dense table appears — e.g. the question workspace list), `Modal`, `Toast`, `ProgressStream` (live drafting progress, Phase 4).
+**Still to build** (later phases, once the underlying feature exists — don't build the component before the data it displays exists): `DataTable` (generalize `SettingsMembersPage`'s list once a second dense table appears — e.g. the question workspace list), `Modal`, `Toast`, `ProgressStream` (live drafting progress, Phase 4).
 
 Every screen that lists or shows data needs explicit **loading**, **empty**, and **error** states designed — not just the happy path. Screens gated by role need an explicit **permission-denied** state too (RBAC is enforced server-side, but the UI shouldn't dead-end silently).
 

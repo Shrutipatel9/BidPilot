@@ -3,6 +3,7 @@ import { Check, Download, FileSearch, Loader2, Sparkles, X } from 'lucide-react'
 import { useSelector } from 'react-redux'
 import { useParams } from 'react-router-dom'
 
+import CitationChip from '../components/CitationChip'
 import ConfidenceBadge from '../components/ConfidenceBadge'
 import ProjectStatusBadge from '../components/ProjectStatusBadge'
 import StatusBadge from '../components/StatusBadge'
@@ -87,6 +88,7 @@ function ReviewDetailPane({ orgId, projectId, question, answer, myRole }) {
   const canEdit = _EDITOR_ROLES.has(myRole)
   const canReview = _REVIEW_ROLES.has(myRole)
   const dirty = text !== answer.text
+  const isInsufficient = answer.text === 'Insufficient information'
 
   return (
     <div className="flex h-full flex-col">
@@ -100,6 +102,23 @@ function ReviewDetailPane({ orgId, projectId, question, answer, myRole }) {
           <span className="ml-2 text-xs font-medium text-slate-500">Selected: {answer.choice}</span>
         )}
       </div>
+
+      {isInsufficient && (
+        <div className="mb-3">
+          <Callout variant="warning">
+            The AI found no evidence in the knowledge base to answer this question. Write the answer manually
+            or upload a relevant document and re-draft.
+          </Callout>
+        </div>
+      )}
+
+      {answer.citations.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {answer.citations.map((citation) => (
+            <CitationChip key={citation.chunk_id} citation={citation} />
+          ))}
+        </div>
+      )}
 
       <textarea
         value={text}

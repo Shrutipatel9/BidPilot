@@ -51,6 +51,13 @@ export const knowledgeApi = createApi({
       }),
       invalidatesTags: ['KnowledgeDocuments'],
     }),
+    searchKnowledgeBase: builder.query({
+      query: ({ orgId, q }) => ({
+        url: `/api/orgs/${orgId}/knowledge/search`,
+        method: 'GET',
+        params: { q },
+      }),
+    }),
   }),
 })
 
@@ -60,4 +67,5 @@ export const {
   useUpdateKnowledgeDocumentMutation,
   useReplaceKnowledgeDocumentMutation,
   useDeleteKnowledgeDocumentMutation,
+  useLazySearchKnowledgeBaseQuery,
 } = knowledgeApi

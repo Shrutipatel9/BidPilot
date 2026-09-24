@@ -9,7 +9,11 @@ from app.core.rbac import get_membership, require_role
 from app.db.session import get_db
 from app.models.membership import Membership, MembershipRole
 from app.schemas.knowledge_document import KnowledgeDocumentResponse, UpdateKnowledgeDocumentRequest
+from app.schemas.knowledge_search import ChunkSearchResult
 from app.services import knowledge_service
+from app.services.retrieval_service import retrieve_top_chunks
+
+_SEARCH_TOP_K = 10
 
 router = APIRouter(prefix="/api/orgs/{org_id}/knowledge", tags=["knowledge"])
 
@@ -88,3 +92,25 @@ async def delete_document(
 ):
     document = await knowledge_service.get_document(db, org_id, document_id)
     await knowledge_service.delete_document(db, document, membership.user_id)
+
+
+@router.get("/search", response_model=list[ChunkSearchResult])
+async def search_knowledge_base(
+    org_id: uuid.UUID,
+    q: str,
+    membership: Membership = Depends(get_membership),
+    db: AsyncSession = Depends(get_db),
+):
+    chunks = await retrieve_top_chunks(db, org_id, q, top_k=_SEARCH_TOP_K)
+    return [
+        ChunkSearchResult(
+            chunk_id=c.chunk_id,
+            document_id=c.document_id,
+            document_title=c.document_title,
+            page=c.page,
+            section=c.section,
+            snippet=c.text[:300],
+            similarity=c.similarity,
+        )
+        for c in chunks
+    ]

@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { BookOpen, Plus, Trash2 } from 'lucide-react'
+import { BookOpen, Plus, Search, Trash2, X } from 'lucide-react'
 import { useSelector } from 'react-redux'
 
+import CitationChip from '../components/CitationChip'
 import DocumentStatusBadge from '../components/DocumentStatusBadge'
 import Button from '../components/form/Button'
 import ErrorBanner from '../components/form/ErrorBanner'
@@ -11,6 +12,7 @@ import { selectCurrentOrgId } from '../features/auth/authSlice'
 import {
   useCreateKnowledgeDocumentMutation,
   useDeleteKnowledgeDocumentMutation,
+  useLazySearchKnowledgeBaseQuery,
   useListKnowledgeDocumentsQuery,
 } from '../features/knowledge/knowledgeApi'
 
@@ -63,6 +65,65 @@ function UploadForm({ orgId, onDone }) {
   )
 }
 
+function SearchSection({ orgId }) {
+  const [query, setQuery] = useState('')
+  const [activeQuery, setActiveQuery] = useState('')
+  const [runSearch, { data: results = [], isLoading, isFetching, error }] = useLazySearchKnowledgeBaseQuery()
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    const trimmed = query.trim()
+    if (!trimmed) return
+    setActiveQuery(trimmed)
+    runSearch({ orgId, q: trimmed })
+  }
+
+  function clear() {
+    setQuery('')
+    setActiveQuery('')
+  }
+
+  return (
+    <div className="mb-6">
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search the knowledge base…"
+            className="w-full rounded-lg border border-slate-200 py-2.5 pl-9 pr-3 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15"
+          />
+        </div>
+        <Button type="submit" variant="secondary" loading={isLoading || isFetching} disabled={!query.trim()}>
+          Search
+        </Button>
+        {activeQuery && (
+          <Button type="button" variant="ghost" onClick={clear}>
+            <X className="size-4" aria-hidden="true" />
+          </Button>
+        )}
+      </form>
+
+      {activeQuery && (
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <ErrorBanner error={error} />
+          {!isLoading && !isFetching && results.length === 0 && (
+            <p className="text-sm text-slate-500">No matches for "{activeQuery}".</p>
+          )}
+          <ul className="flex flex-col gap-3">
+            {results.map((result) => (
+              <li key={result.chunk_id}>
+                <CitationChip citation={result} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function KnowledgeBasePage() {
   const orgId = useSelector(selectCurrentOrgId)
   // Polls while any document is still being ingested — the same "no push channel yet" gap as
@@ -104,6 +165,8 @@ export default function KnowledgeBasePage() {
           </Button>
         )}
       </div>
+
+      <SearchSection orgId={orgId} />
 
       {showUpload && <UploadForm orgId={orgId} onDone={() => setShowUpload(false)} />}
 
