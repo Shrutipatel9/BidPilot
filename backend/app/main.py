@@ -29,6 +29,9 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Browsers hide response headers from JS on cross-origin requests unless explicitly exposed —
+    # the project export download reads the server-set filename out of this header.
+    expose_headers=["Content-Disposition"],
 )
 
 app.include_router(auth_router)

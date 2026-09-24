@@ -1,23 +1,33 @@
 import json
+import logging
 import uuid
 from datetime import date
+from typing import Literal
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Form, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Query, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rbac import get_membership, require_role
+from app.core.storage import download_bytes
 from app.db.session import get_db
 from app.models.membership import Membership, MembershipRole
 from app.schemas.answer import AnswerResponse, RejectAnswerRequest, UpdateAnswerRequest
 from app.schemas.project import ProjectResponse
 from app.schemas.question import QuestionResponse, UpdateQuestionRequest
-from app.services import answer_service, project_service, question_service
+from app.services import answer_service, export_service, project_service, question_service
 from app.services.drafting_service import run_drafting_for_project
 
 router = APIRouter(prefix="/api/orgs/{org_id}/projects", tags=["projects"])
+logger = logging.getLogger("bidpilot.export")
 
 _EDITOR_ROLES = (MembershipRole.owner, MembershipRole.admin, MembershipRole.responder)
 _REVIEW_ROLES = (*_EDITOR_ROLES, MembershipRole.reviewer)
+
+_EXPORT_CONTENT_TYPES = {
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "csv": "text/csv",
+}
 
 
 @router.post("", response_model=ProjectResponse, status_code=201)
@@ -174,3 +184,44 @@ async def reject_answer(
     await project_service.get_project(db, org_id, project_id)
     answer = await answer_service.reject_answer(db, project_id, answer_id, org_id, membership.user_id, body.reason)
     return AnswerResponse.model_validate(answer)
+
+
+@router.get("/{project_id}/export")
+async def export_project(
+    org_id: uuid.UUID,
+    project_id: uuid.UUID,
+    format: Literal["xlsx", "docx", "csv"] = Query(...),
+    membership: Membership = Depends(get_membership),
+    db: AsyncSession = Depends(get_db),
+):
+    project = await project_service.get_project(db, org_id, project_id)
+    if format != "csv" and format != project.source_file_ext:
+        raise HTTPException(400, f"cannot export as {format} — source questionnaire is a .{project.source_file_ext}")
+
+    questions = await question_service.list_questions(db, project_id)
+    answers = await answer_service.list_answers(db, project_id)
+    answers_by_question_id = {a.question_id: a for a in answers}
+
+    fills = [
+        (question.position, answers_by_question_id[question.id].text)
+        for question in questions
+        if question.id in answers_by_question_id and answers_by_question_id[question.id].text
+    ]
+
+    if format == "csv":
+        content = export_service.export_csv(questions, answers_by_question_id)
+    elif format == "xlsx":
+        original = await download_bytes(project.source_file_key)
+        content = await export_service.fill_xlsx(original, fills)
+    else:
+        original = await download_bytes(project.source_file_key)
+        content, skipped = await export_service.fill_docx(original, fills)
+        if skipped:
+            logger.warning("export skipped %d question(s) with a stale fingerprint: %s", len(skipped), skipped)
+
+    filename = f"{project.name}.{format}"
+    return Response(
+        content=content,
+        media_type=_EXPORT_CONTENT_TYPES[format],
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

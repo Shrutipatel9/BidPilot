@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Check, FileSearch, Loader2, Sparkles, X } from 'lucide-react'
+import { Check, Download, FileSearch, Loader2, Sparkles, X } from 'lucide-react'
 import { useSelector } from 'react-redux'
 import { useParams } from 'react-router-dom'
 
@@ -7,8 +7,10 @@ import ConfidenceBadge from '../components/ConfidenceBadge'
 import ProjectStatusBadge from '../components/ProjectStatusBadge'
 import StatusBadge from '../components/StatusBadge'
 import Button from '../components/form/Button'
+import Callout from '../components/form/Callout'
 import ErrorBanner from '../components/form/ErrorBanner'
 import { selectCurrentOrgId, selectCurrentUser } from '../features/auth/authSlice'
+import { downloadProjectExport } from '../features/project/exportDownload'
 import { useListMembersQuery } from '../features/org/orgApi'
 import {
   useApproveAnswerMutation,
@@ -169,6 +171,60 @@ function ReviewDetailPane({ orgId, projectId, question, answer, myRole }) {
   )
 }
 
+function ExportSection({ orgId, projectId, project, answers }) {
+  const accessToken = useSelector((state) => state.auth.accessToken)
+  const [format, setFormat] = useState(project.source_file_ext === 'pdf' ? 'csv' : project.source_file_ext)
+  const [downloading, setDownloading] = useState(false)
+  const [error, setError] = useState(null)
+
+  const unapprovedCount = answers.filter((a) => a.status !== 'approved').length
+  const formatOptions = project.source_file_ext === 'pdf' ? ['csv'] : [project.source_file_ext, 'csv']
+
+  const handleExport = async () => {
+    setDownloading(true)
+    setError(null)
+    try {
+      await downloadProjectExport({ orgId, projectId, format, accessToken })
+    } catch {
+      setError('Export failed. Please try again.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  return (
+    <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
+      <h3 className="text-sm font-semibold text-slate-900">Export</h3>
+      {unapprovedCount > 0 && (
+        <div className="mt-3">
+          <Callout variant="warning">
+            {unapprovedCount} answer{unapprovedCount === 1 ? ' is' : 's are'} not yet approved. They'll still be
+            included using their current draft text.
+          </Callout>
+        </div>
+      )}
+      {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
+      <div className="mt-4 flex items-center gap-3">
+        <select
+          value={format}
+          onChange={(e) => setFormat(e.target.value)}
+          className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15"
+        >
+          {formatOptions.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt.toUpperCase()}
+            </option>
+          ))}
+        </select>
+        <Button onClick={handleExport} loading={downloading}>
+          <Download className="size-4" aria-hidden="true" />
+          {downloading ? 'Exporting…' : 'Export'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 function DraftingSection({ orgId, projectId, project, questions, myRole }) {
   const questionCount = questions.length
   const [startDrafting, { isLoading: starting, error: startError }] = useStartDraftingMutation()
@@ -224,37 +280,40 @@ function DraftingSection({ orgId, projectId, project, questions, myRole }) {
   const selectedAnswer = selectedQuestion ? answersByQuestionId.get(selectedQuestion.id) : null
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4">
-      <div className="max-h-[70vh] overflow-y-auto rounded-xl border border-slate-200 bg-white">
-        {questions.map((question) => {
-          const answer = answersByQuestionId.get(question.id)
-          const isSelected = selectedQuestion?.id === question.id
-          return (
-            <button
-              key={question.id}
-              onClick={() => setSelectedQuestionId(question.id)}
-              className={`flex w-full flex-col gap-1.5 border-b border-slate-100 px-4 py-3 text-left last:border-0 hover:bg-slate-50 ${isSelected ? 'bg-brand-50/60' : ''}`}
-            >
-              <p className="line-clamp-2 text-sm text-slate-800">{question.text}</p>
-              {answer && <StatusBadge status={answer.status} />}
-            </button>
-          )
-        })}
+    <div>
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4">
+        <div className="max-h-[70vh] overflow-y-auto rounded-xl border border-slate-200 bg-white">
+          {questions.map((question) => {
+            const answer = answersByQuestionId.get(question.id)
+            const isSelected = selectedQuestion?.id === question.id
+            return (
+              <button
+                key={question.id}
+                onClick={() => setSelectedQuestionId(question.id)}
+                className={`flex w-full flex-col gap-1.5 border-b border-slate-100 px-4 py-3 text-left last:border-0 hover:bg-slate-50 ${isSelected ? 'bg-brand-50/60' : ''}`}
+              >
+                <p className="line-clamp-2 text-sm text-slate-800">{question.text}</p>
+                {answer && <StatusBadge status={answer.status} />}
+              </button>
+            )
+          })}
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-5">
+          {selectedQuestion && selectedAnswer ? (
+            <ReviewDetailPane
+              key={selectedAnswer.id}
+              orgId={orgId}
+              projectId={projectId}
+              question={selectedQuestion}
+              answer={selectedAnswer}
+              myRole={myRole}
+            />
+          ) : (
+            <p className="text-sm text-slate-400">Select a question to review its answer.</p>
+          )}
+        </div>
       </div>
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
-        {selectedQuestion && selectedAnswer ? (
-          <ReviewDetailPane
-            key={selectedAnswer.id}
-            orgId={orgId}
-            projectId={projectId}
-            question={selectedQuestion}
-            answer={selectedAnswer}
-            myRole={myRole}
-          />
-        ) : (
-          <p className="text-sm text-slate-400">Select a question to review its answer.</p>
-        )}
-      </div>
+      <ExportSection orgId={orgId} projectId={projectId} project={project} answers={answers} />
     </div>
   )
 }
